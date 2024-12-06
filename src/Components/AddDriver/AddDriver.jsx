@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../Firebase/Firebase'; // Ensure the correct path
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'; // Import doc and updateDoc from Firebase
 
 const AddDriver = ({ setDrivers }) => {
   const [formData, setFormData] = useState({
@@ -14,32 +14,61 @@ const AddDriver = ({ setDrivers }) => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false); // Track if form is submitting
+  const [driverId, setDriverId] = useState(null); // Track the driver's ID after adding
 
   useEffect(() => {
     // Check if geolocation is available in the browser
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
+      const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude, accuracy } = position.coords;
-          
-        
-    
+  
+          // Log the new location to the console
+          console.log("New location:", { latitude, longitude, accuracy });
+  
+          // Update the driver's location in the state
           setFormData((prevData) => ({
             ...prevData,
             latitude,
             longitude,
+            accuracy, // Optional: store accuracy if needed
           }));
+  
+          // Log the updated location data in state
+          console.log("Updated formData state:", formData);
+  
+          // Update Firebase with the new location
+          if (driverId) {
+            const driverRef = doc(db, "drivers", driverId); // Reference to the driver's document
+            updateDoc(driverRef, {
+              latitude,
+              longitude,
+            }).then(() => {
+              console.log("Driver location updated in Firebase:", { latitude, longitude });
+            }).catch((error) => {
+              console.error("Error updating location in Firebase:", error);
+            });
+          }
         },
         (error) => {
           console.error("Error getting location: ", error);
           alert("Location permission is required for this feature.");
+        },
+        {
+          enableHighAccuracy: true,  // Optional: use higher accuracy
+          maximumAge: 0,             // Get the most recent position
+          timeout: 10000,            // Timeout if no location found within 10 seconds
         }
       );
+  
+      // Cleanup function to stop watching when the component unmounts
+      return () => {
+        console.log('Geolocation watch cleared');
+      };
     } else {
       console.log("Geolocation is not supported by this browser.");
     }
-    
-  }, []);
+  }, [driverId]); // Ensure this effect runs when driverId is set
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -65,7 +94,6 @@ const AddDriver = ({ setDrivers }) => {
       setIsSubmitting(false);
       return;
     }
-   
 
     try {
       // Add the new driver to Firebase Firestore
@@ -80,6 +108,9 @@ const AddDriver = ({ setDrivers }) => {
       });
 
       console.log('Document written with ID: ', docRef.id);
+
+      // Save the driverId for real-time location updates
+      setDriverId(docRef.id);
 
       // Update the parent component state (add the new driver to the driver list)
       const newDriver = {

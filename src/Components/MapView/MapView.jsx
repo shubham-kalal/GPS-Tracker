@@ -1,19 +1,36 @@
 import React, { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { db } from '../Firebase/Firebase';  // Import Firestore from Firebase config
-import { collection, onSnapshot } from "firebase/firestore";  // Firestore methods
+import { db } from "../Firebase/Firebase"; // Import Firebase configuration
+import { collection, onSnapshot } from "firebase/firestore"; // Firestore methods
 
-// Custom icon with FaCar React Icon rendered as HTML string
-const customIcon = () => {
-  return new L.divIcon({
-    className: 'leaflet-div-icon',
-    html: `<div style="font-size: 2px; color: #ff5733; text-align: center; vertical-align: middle; display: flex; justify-content: center; align-items: center;">&#xf1b9;</div>`,  // Font Awesome Car icon unicode for FaCar
-    iconSize: [10, 10], // Size of the icon
-    iconAnchor: [15, 30], // Anchor the icon in the correct position
-    popupAnchor: [0, -30], // Offset the popup
-  });
+// Custom icon for drivers
+const customIcon = new L.divIcon({
+  className: "leaflet-div-icon",
+  html: `<div style="font-size: 1.5em; color: #ff5733; text-align: center; display: flex; justify-content: center; align-items: center;">&#xf1b9;</div>`, // Font Awesome Car icon
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
+  popupAnchor: [0, -30],
+});
+
+// Helper Component to Move Marker Dynamically
+const DynamicMarker = ({ position, icon, children }) => {
+  const map = useMap();
+  const markerRef = React.useRef(null);
+
+  useEffect(() => {
+    const marker = markerRef.current;
+    if (marker) {
+      marker.setLatLng(position); // Update marker position
+    }
+  }, [position]);
+
+  return (
+    <Marker position={position} icon={icon} ref={markerRef}>
+      {children}
+    </Marker>
+  );
 };
 
 const MapView = () => {
@@ -23,52 +40,55 @@ const MapView = () => {
   // Fetch drivers from Firestore with real-time updates
   useEffect(() => {
     const driversCollectionRef = collection(db, "drivers");
+    const unsubscribe = onSnapshot(
+      driversCollectionRef,
+      (snapshot) => {
+        const driversData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setDrivers(driversData); // Update drivers state
+      },
+      (error) => {
+        console.error("Error fetching drivers:", error);
+      }
+    );
 
-    const unsubscribe = onSnapshot(driversCollectionRef, (snapshot) => {
-      const driversData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setDrivers(driversData); // Update the state with the latest driver data
-    });
-
-    // Cleanup listener on component unmount
-    return () => unsubscribe();
+    return () => unsubscribe(); // Cleanup listener on component unmount
   }, []);
 
-  // Update map center dynamically after drivers data is fetched
+  // Update map center dynamically
   useEffect(() => {
     if (drivers.length > 0) {
-      const latitudes = drivers.map(driver => driver.latitude);
-      const longitudes = drivers.map(driver => driver.longitude);
-
-      const avgLat = latitudes.reduce((acc, lat) => acc + lat, 0) / latitudes.length;
-      const avgLon = longitudes.reduce((acc, lon) => acc + lon, 0) / longitudes.length;
-
-      setMapCenter([avgLat, avgLon]); // Update center after drivers data is set
+      const avgLat = drivers.reduce((sum, driver) => sum + driver.latitude, 0) / drivers.length;
+      const avgLon = drivers.reduce((sum, driver) => sum + driver.longitude, 0) / drivers.length;
+      setMapCenter([avgLat, avgLon]);
     }
   }, [drivers]);
 
   return (
-    <div className="p-0" style={{ height: "100vh", width: "100vw" }}>
-      <MapContainer center={mapCenter} zoom={5} style={{ height: "100%", width: "100%" }}>
+    <div style={{ height: "100vh", width: "100vw" }}>
+      <MapContainer center={mapCenter} zoom={10} style={{ height: "100%", width: "100%" }}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution="&copy; OpenStreetMap contributors"
         />
 
         {drivers.map((driver) => (
-          // Check if latitude and longitude are defined before rendering the marker
           driver.latitude && driver.longitude ? (
-            <Marker key={driver.id} position={[driver.latitude, driver.longitude]} icon={customIcon()}>
+            <DynamicMarker
+              key={driver.id}
+              position={[driver.latitude, driver.longitude]}
+              icon={customIcon}
+            >
               <Popup>
                 <strong>{driver.name}</strong>
                 <p>{driver.mobileNo}</p>
-                <span>{driver.carNo}</span>
-                <p>{driver.vehicleType}</p>
+                <p>Car No: {driver.carNo}</p>
+                <p>Type: {driver.vehicleType}</p>
               </Popup>
-            </Marker>
-          ) : null // If latitude or longitude is undefined, don't render the marker
+            </DynamicMarker>
+          ) : null
         ))}
       </MapContainer>
     </div>

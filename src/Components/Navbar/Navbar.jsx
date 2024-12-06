@@ -3,7 +3,7 @@ import React from 'react'
 const Navbar = ({toggleSidebar}) => {
     return (
         <div>
-            <div className="flex justify-between items-center fixed w-full text-white text-xl z-30 bg-slate-700 py-5 sm:px-14 px-5  ">
+            <div className="flex justify-between items-center fixed w-full text-white text-xl z-50 bg-slate-700 py-5 sm:px-14 px-5  ">
                 <div className="flex items-center">
                 <span className="pl-0 sm:pl-10">Admin</span>
                 <button data-drawer-target="sidebar-multi-level-sidebar" data-drawer-toggle="sidebar-multi-level-sidebar" aria-controls="sidebar-multi-level-sidebar" type="button" onClick={toggleSidebar} class="inline-flex items-center mt-2 ms-3 text-sm text-gray-100 rounded-lg sm:hidden hover:bg-gray-500 p-1">
