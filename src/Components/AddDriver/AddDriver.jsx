@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../Firebase/Firebase";
-import { addDoc, collection, getDocs } from "firebase/firestore";
-
+import { addDoc, collection, getDocs, updateDoc, doc } from "firebase/firestore";
 const AddDriver = ({ setDrivers }) => {
   const [formData, setFormData] = useState({
     name: "",
@@ -14,25 +13,48 @@ const AddDriver = ({ setDrivers }) => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [driverId, setDriverId] = useState(null); // Store the driver ID after adding
 
   useEffect(() => {
-    // Get current location when the component mounts
+    // Get current location when the component mounts and watch for location changes
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
+      const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
+          console.log("Location updated:", { latitude, longitude });  // Debugging line
           setFormData((prevData) => ({
             ...prevData,
             latitude: latitude,
             longitude: longitude,
           }));
+
+          // Update Firestore with the new location
+          if (driverId) {
+            const driverDocRef = doc(db, "drivers", driverId);
+            updateDoc(driverDocRef, {
+              latitude: latitude,
+              longitude: longitude,
+            })
+              .then(() => {
+                console.log("Location successfully updated in Firestore.");
+              })
+              .catch((err) => {
+                console.error("Error updating Firestore:", err);
+              });
+          }
         },
         (error) => {
           console.error("Error getting location:", error);
-        }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
+
+      // Cleanup on component unmount
+      return () => {
+        navigator.geolocation.clearWatch(watchId);
+      };
     }
-  }, []);
+  }, [driverId]); // Depend on driverId to start the location watch only after driver is added
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -44,6 +66,10 @@ const AddDriver = ({ setDrivers }) => {
 
   const handleAddDriver = async (e) => {
     e.preventDefault();
+
+ 
+
+
     if (isSubmitting) return;
 
     setIsSubmitting(true);
@@ -54,6 +80,7 @@ const AddDriver = ({ setDrivers }) => {
         return;
       }
 
+      // Add the driver to Firestore
       const docRef = await addDoc(collection(db, "drivers"), {
         ...formData,
         latitude: parseFloat(formData.latitude?.toFixed(6)) || null,
@@ -61,10 +88,11 @@ const AddDriver = ({ setDrivers }) => {
       });
 
       console.log("Driver added with ID:", docRef.id);
+      setDriverId(docRef.id);  // Save the driverId for future updates
 
-      // After adding the driver, fetch the updated list of drivers
+      // Fetch updated list of drivers
       const querySnapshot = await getDocs(collection(db, "drivers"));
-      const driverData = querySnapshot.docs.map(doc => ({
+      const driverData = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));

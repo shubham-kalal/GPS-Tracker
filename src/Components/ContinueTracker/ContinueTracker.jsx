@@ -36,19 +36,7 @@ export const startGlobalTracking = (onLocationUpdate, onError, driverId) => {
       const { latitude, longitude } = position.coords;
       console.log("Location updated:", { latitude, longitude });
 
-      if (previousLocation) {
-        const distance = calculateDistance(
-          previousLocation.latitude,
-          previousLocation.longitude,
-          latitude,
-          longitude
-        );
-
-        if (distance > 50) {
-          console.log("Significant location change detected.");
-        }
-      }
-
+      // Update the previous location with new values
       previousLocation = { latitude, longitude };
 
       // Callback for location updates
@@ -68,11 +56,23 @@ export const startGlobalTracking = (onLocationUpdate, onError, driverId) => {
   // Firestore update every 3 seconds
   globalInterval = setInterval(() => {
     if (previousLocation && driverId) {
+      const { latitude, longitude } = previousLocation;
+      console.log("Updating Firestore with location:", { latitude, longitude });
+
+      // Ensure that previousLocation is not null
       const driverDocRef = doc(db, "drivers", driverId);
       updateDoc(driverDocRef, {
-        latitude: previousLocation.latitude,
-        longitude: previousLocation.longitude,
-      }).catch((err) => console.error("Error updating Firestore:", err));
+        latitude: latitude,
+        longitude: longitude,
+      })
+        .then(() => {
+          console.log("Location successfully updated in Firestore.");
+        })
+        .catch((err) => {
+          console.error("Error updating Firestore:", err);
+        });
+    } else {
+      console.log("Waiting for location update...");
     }
   }, 3000); // Every 3 seconds
 };
