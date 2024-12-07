@@ -67,7 +67,7 @@ const MapView = () => {
   }, [drivers]);
 
   return (
-    <div style={{ height: "100vh", width: "100vw" }}>
+    <div style={{ height: "100vh", width: "100%" }}>
       <MapContainer center={mapCenter} zoom={10} style={{ height: "100%", width: "100%" }}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -83,9 +83,9 @@ const MapView = () => {
             >
               <Popup>
                 <strong>{driver.name}</strong>
-                <p>{driver.mobileNo}</p>
-                <p>Car No: {driver.carNo}</p>
-                <p>Type: {driver.vehicleType}</p>
+                <p>Mo No:{driver.mobileNo}</p>
+                <p>Car No: {driver.carNo}</p> 
+                <p>Vehicle Type: {driver.vehicleType}</p>
               </Popup>
             </DynamicMarker>
           ) : null

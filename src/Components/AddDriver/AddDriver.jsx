@@ -7,7 +7,7 @@ const AddDriver = ({ setDrivers }) => {
   const [formData, setFormData] = useState({
     name: "",
     mobileNo: "",
-    carNo: "",
+    carNo: "", 
     licenceNo: "",
     vehicleType: "",
     latitude: null,
