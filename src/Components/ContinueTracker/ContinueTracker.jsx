@@ -1,9 +1,13 @@
-let globalWatchId = null;
-let previousLocation = null; // Store previous location to compare
+import { updateDoc, doc } from "firebase/firestore";
+import { db } from "../Firebase/Firebase";
 
-// Function to calculate the distance between two latitude/longitude points
+let globalWatchId = null;
+let globalInterval = null; // To manage the interval
+let previousLocation = null;
+
+// Function to calculate distance between two coordinates
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371; // Radius of the Earth in kilometers
+  const R = 6371; // Earth's radius in km
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
   const a =
@@ -13,11 +17,10 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c * 1000; // Distance in meters
-  return distance;  
+  return R * c * 1000; // Distance in meters
 };
 
-export const startGlobalTracking = (onLocationUpdate, onError) => {
+export const startGlobalTracking = (onLocationUpdate, onError, driverId) => {
   if (!navigator.geolocation) {
     console.error("Geolocation is not supported by your browser.");
     return;
@@ -31,10 +34,8 @@ export const startGlobalTracking = (onLocationUpdate, onError) => {
   globalWatchId = navigator.geolocation.watchPosition(
     (position) => {
       const { latitude, longitude } = position.coords;
-
       console.log("Location updated:", { latitude, longitude });
 
-      // Check if the location has changed significantly (e.g., 50 meters)
       if (previousLocation) {
         const distance = calculateDistance(
           previousLocation.latitude,
@@ -44,16 +45,13 @@ export const startGlobalTracking = (onLocationUpdate, onError) => {
         );
 
         if (distance > 50) {
-          console.log("User's location has changed significantly");
-        } else {
-          console.log("User's location has not changed");
+          console.log("Significant location change detected.");
         }
       }
 
-      // Save the current location as the previous location for the next update
       previousLocation = { latitude, longitude };
 
-      // Execute callback for each location update
+      // Callback for location updates
       if (onLocationUpdate) {
         onLocationUpdate({ latitude, longitude });
       }
@@ -64,10 +62,29 @@ export const startGlobalTracking = (onLocationUpdate, onError) => {
         onError(error);
       }
     },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
-    }
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   );
+
+  // Firestore update every 3 seconds
+  globalInterval = setInterval(() => {
+    if (previousLocation && driverId) {
+      const driverDocRef = doc(db, "drivers", driverId);
+      updateDoc(driverDocRef, {
+        latitude: previousLocation.latitude,
+        longitude: previousLocation.longitude,
+      }).catch((err) => console.error("Error updating Firestore:", err));
+    }
+  }, 3000); // Every 3 seconds
+};
+
+// Stop tracking
+export const stopGlobalTracking = () => {
+  if (globalWatchId) {
+    navigator.geolocation.clearWatch(globalWatchId);
+    globalWatchId = null;
+  }
+  if (globalInterval) {
+    clearInterval(globalInterval);
+    globalInterval = null;
+  }
 };

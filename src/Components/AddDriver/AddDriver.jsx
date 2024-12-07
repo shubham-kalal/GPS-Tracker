@@ -1,13 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { db } from "../Firebase/Firebase"; // Adjust the import path
-import { addDoc, collection } from "firebase/firestore";
-import { startGlobalTracking } from "../ContinueTracker/ContinueTracker";
+import React, { useState, useEffect } from "react";
+import { db } from "../Firebase/Firebase";
+import { addDoc, collection, getDocs } from "firebase/firestore";
 
 const AddDriver = ({ setDrivers }) => {
   const [formData, setFormData] = useState({
     name: "",
     mobileNo: "",
-    carNo: "", 
+    carNo: "",
     licenceNo: "",
     vehicleType: "",
     latitude: null,
@@ -16,20 +15,23 @@ const AddDriver = ({ setDrivers }) => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Start tracking when the component mounts
   useEffect(() => {
-    startGlobalTracking(
-      (location) => {
-        setFormData((prevData) => ({
-          ...prevData,
-          latitude: location.latitude,
-          longitude: location.longitude,
-        }));
-      },
-      (error) => {
-        console.error("Error in location tracking:", error);
-      }
-    );
+    // Get current location when the component mounts
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setFormData((prevData) => ({
+            ...prevData,
+            latitude: latitude,
+            longitude: longitude,
+          }));
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+        }
+      );
+    }
   }, []);
 
   const handleInputChange = (e) => {
@@ -42,34 +44,42 @@ const AddDriver = ({ setDrivers }) => {
 
   const handleAddDriver = async (e) => {
     e.preventDefault();
-
     if (isSubmitting) return;
 
     setIsSubmitting(true);
 
     try {
+      if (formData.latitude === null || formData.longitude === null) {
+        console.error("Latitude and Longitude are required.");
+        return;
+      }
+
       const docRef = await addDoc(collection(db, "drivers"), {
         ...formData,
-        latitude: parseFloat(formData.latitude.toFixed(6)),
-        longitude: parseFloat(formData.longitude.toFixed(6)),
+        latitude: parseFloat(formData.latitude?.toFixed(6)) || null,
+        longitude: parseFloat(formData.longitude?.toFixed(6)) || null,
       });
 
       console.log("Driver added with ID:", docRef.id);
 
-      setDrivers((prev) => [
-        ...prev,
-        { id: docRef.id, ...formData },
-      ]);
+      // After adding the driver, fetch the updated list of drivers
+      const querySnapshot = await getDocs(collection(db, "drivers"));
+      const driverData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setDrivers(driverData); // Update the parent component's state
 
-      // Reset form fields but retain location
-      setFormData((prevData) => ({
-        ...prevData,
+      // Reset form fields
+      setFormData({
         name: "",
         mobileNo: "",
         carNo: "",
         licenceNo: "",
         vehicleType: "",
-      }));
+        latitude: null,
+        longitude: null,
+      });
     } catch (error) {
       console.error("Error adding driver:", error);
     } finally {
@@ -82,9 +92,9 @@ const AddDriver = ({ setDrivers }) => {
       <h3 className="text-2xl font-bold text-center text-gray-700 mb-6">
         Add New Driver
       </h3>
-
       <div className="bg-white w-full max-w-lg p-8 rounded-lg shadow-lg">
         <form onSubmit={handleAddDriver} className="space-y-6">
+          {/* Form fields */}
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-600 mb-1">
               Name
