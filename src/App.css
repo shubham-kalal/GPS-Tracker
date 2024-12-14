@@ -1,0 +1,22 @@
+.re-start-btn{
+    background-color: #0d6efd;
+    color: #ffffff;
+    font-size: 16px;
+    padding: 15px 30px;
+}
+
+.re-btn{
+    background-color: #dc3545;
+    color: #ffffff;
+    font-size: 16px;
+    padding: 15px 30px;
+    margin-left: 10px;
+}
+
+.map-red-icon {
+    color: red;
+}
+
+.map-green-icon {
+    color: green;
+}

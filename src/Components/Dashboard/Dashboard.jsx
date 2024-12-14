@@ -4,6 +4,7 @@ import Navbar from '../Navbar/Navbar';
 import DriverList from '../DriverList/DriverList';
 import AddDriver from '../AddDriver/AddDriver';
 import MapView from '../MapView/MapView';
+// import CarControl from '../CarControl/CarControl';
 import { db } from '../Firebase/Firebase';  
 import { collection, onSnapshot } from 'firebase/firestore';
 import AdminLogin from '../AdminLogin/AdminLogin';
@@ -57,13 +58,15 @@ const Dashboard = () => {
         {role === 'admin' ? (
           // Admin sees the full dashboard
           <>
-            {selectedField === 'Dashboard' && <MapView />}
+            {selectedField === 'Dashboard' && <MapView role={role} />}
+            {/* {selectedField === 'Dashboard' && <MapView /> && <CarControl />} */}
             {selectedField === 'DriverList' && <DriverList drivers={drivers} />}
             {selectedField === 'AddDriver' && <AddDriver setDrivers={setDrivers} />}
           </>
         ) : (
           // Regular user sees only 'Add Driver'
           <>
+           {selectedField === 'Dashboard' && <MapView role={role} />}
             {selectedField === 'AddDriver' && <AddDriver setDrivers={setDrivers} />}
           </>
         )}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { toast } from 'react-toastify';
 import { db } from "../Firebase/Firebase";
 import { addDoc, collection, getDocs, updateDoc, doc } from "firebase/firestore";
 const AddDriver = ({ setDrivers }) => {
@@ -66,16 +67,12 @@ const AddDriver = ({ setDrivers }) => {
 
   const handleAddDriver = async (e) => {
     e.preventDefault();
-
- 
-
-
     if (isSubmitting) return;
 
     setIsSubmitting(true);
-
     try {
       if (formData.latitude === null || formData.longitude === null) {
+        toast.error("Latitude and Longitude are required.");
         console.error("Latitude and Longitude are required.");
         return;
       }
@@ -86,9 +83,10 @@ const AddDriver = ({ setDrivers }) => {
         latitude: parseFloat(formData.latitude?.toFixed(6)) || null,
         longitude: parseFloat(formData.longitude?.toFixed(6)) || null,
       });
-
+      
       console.log("Driver added with ID:", docRef.id);
       setDriverId(docRef.id);  // Save the driverId for future updates
+      // alert('driver added successfuly')
 
       // Fetch updated list of drivers
       const querySnapshot = await getDocs(collection(db, "drivers"));
@@ -97,7 +95,8 @@ const AddDriver = ({ setDrivers }) => {
         ...doc.data(),
       }));
       setDrivers(driverData); // Update the parent component's state
-
+      toast.success("Drive added successfuly");
+      
       // Reset form fields
       setFormData({
         name: "",
@@ -105,6 +104,8 @@ const AddDriver = ({ setDrivers }) => {
         carNo: "",
         licenceNo: "",
         vehicleType: "",
+        from: "",
+        to: "",
         latitude: null,
         longitude: null,
       });
@@ -118,7 +119,7 @@ const AddDriver = ({ setDrivers }) => {
   return (
     <div className="mt-20 flex flex-col items-center justify-center">
       <h3 className="text-2xl font-bold text-center text-gray-700 mb-6">
-        Add New Driver
+        Add New Drive
       </h3>
       <div className="bg-white w-full max-w-lg p-8 rounded-lg shadow-lg">
         <form onSubmit={handleAddDriver} className="space-y-6">
@@ -187,12 +188,44 @@ const AddDriver = ({ setDrivers }) => {
             />
           </div>
 
+          <div>
+            <label htmlFor="fromLocation" className="block text-sm font-medium text-gray-600 mb-1">
+              From
+            </label>
+            <input
+              type="text"
+              id="fromLocation"
+              name="from"
+              value={formData.from}
+              onChange={handleInputChange}
+              className="w-full sm:p-3 p-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="From Location Name"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="toLocation" className="block text-sm font-medium text-gray-600 mb-1">
+              To
+            </label>
+            <input
+              type="text"
+              id="toLocation"
+              name="to"
+              value={formData.to}
+              onChange={handleInputChange}
+              className="w-full sm:p-3 p-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="To Location Name"
+              required
+            />
+          </div>
+
           <button
             type="submit"
             className="w-full text-white py-3 rounded-lg shadow-lg font-semibold bg-gradient-to-r from-gray-500 to-slate-500"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Adding..." : "Add Driver"}
+            {isSubmitting ? "Adding..." : "Add Drive"}
           </button>
         </form>
       </div>
